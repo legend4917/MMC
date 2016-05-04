@@ -1,0 +1,223 @@
+\chapter{多核聚类MKC}
+经过上一章的分析，MMC的基本原理和模型推导过程都已经十分清晰。但很容易想到，使用半定规划(SDP)解决凸整形优化问题(\ref{equ:MMC-origin})的过程损失了部分参数空间，使得最终求解的最优类标记与实际的类标记之间有一定的偏差。并且MMC与其它核方法一样，核函数的选择将直接决定模型性能的好坏，但目前如何选择合适的核函数仍然是未解决的问题。针对MMC的适用性，在本章中，受到有监督学习中多核学习工作\upcite{mmkl}的鼓舞，在MMC模型的基础上，引入多核学习的思想得到多核聚类(MKC)。MKC针对MMC中的非凸整形优化问题(\ref{equ:MMC-origin})，使用割平面算法\upcite{zhao2008efficient,zhao2008efficient}和凹凸规划进行求解。最终得到最大间隔超平面、最适当的类标记组合以及最优的核函数组合。
+
+\section{MKC模型}
+\subsection{多核学习}
+MMC与其它核方法一样，都依赖于将数据样本映射到高维的特征空间。但它们都面临一个核心的问题，对于一个特定的任务，不清楚哪个核函数最适合。因此，最近SVM和其它核方法从一系列性质相同或者不同的核中构造出一个核，而不是使用单一固定的核，这样的工作已经显示出令人激动的结果\upcite{mmkl}。允许数据样本在不同特征空间的映射合并为一个基核，这样带来很大的灵活性。基于这些启发，MKC将MMC的单核学习改进为多核学习，详细的说，MKC考虑将$M$个特征映射$\Phi_1,\cdots,\Phi_M$ (对应于$M$个基核$K_1,\cdots,K_M$)进行非负线性组合，公式化描述如下：
+\begin{align} % requires amsmath; align* for no eq. number
+   \Phi(\mathbf{x})=\sum^M_{k=1}\beta_k\Phi_k(\mathbf{x})
+\end{align}
+
+其中，$\beta_k\ge 0$，并且存在整数$p$，使得$\sum_k\beta^p_k \le 1$。通过同时考虑到超平面参数(权值$\mathbf{w}$和偏置$b$)和权重参数$\beta_k$来优化MMC中的目标函数，就能得到最优的MMC特征映射。
+
+\subsection{优化过程}
+论文的后面将会看到，原始MKC最优化问题的约束条件数非常之多，难以在有限的时间内求解，因此可以通过割平面法\upcite{kelley1960cutting}求解。通过构造一个可嵌套的、逐渐逼近原始MKC最优化问题的松弛序列，序列中的每个最优化问题都可以看作二阶锥规划(SOCP)\upcite{socp}，并能通过凹凸规划(CCCP)\upcite{cccp}来求解。
+
+\section{模型推导}
+\subsection{单核最大间隔聚类}
+在第三章中已经介绍MMC的核心思想，就是将最大间隔标准从有监督的学习推广到无监督的学习中。在二类聚类情况下，给予数据集：$X=\{\mathbf{x}_1,\cdots,\mathbf{x}_m\}$，MMC的目标是寻找最优的标签集合$\mathbf{y}=\{y_1,\cdots,y_n\}\in\{-1,\,+1\}^n$，使得SVM在数据集$\{(\mathbf{x}_1,y_1),\cdots,(\mathbf{x}_m,y_m)\}$上训练并产生最大间隔。对最优化问题(\ref{equ:MMC-origin})重新公式化描述如下：
+\begin{equation}
+\begin{split}
+\min_{y\in\{\pm1\}^n}\min_{\mathbf{w},b,\mathbf{\xi}} \quad & \frac{1}{2}\mathbf{w}^T\mathbf{w}+\frac{C}{n}\sum^n_{i=1}\xi_i \\
+s.t. \quad & \forall i\in\{1,\cdots,m\}: \\
+& y_i(\mathbf{w}^T\Phi(\mathbf{x}_i)+b) \ge 1-\xi_i,\xi_i \ge 0,  \\
+& -l \le \sum^n_{i=1}y_i \le l.
+\label{equ:MKC-singalKernel}
+\end{split}
+\end{equation}
+
+其中，数据样本$X$被映射到高维特征空间，$\Phi$是线性或非线性特征映射。在支持向量机中，通常是使用其对偶形式进行训练的，借助核方法来隐含使用$\Phi$。$\Phi(\mathbf{x})$可以通过计算相应的核矩阵$K$的乔姆斯基(Cholesky)分解得到，也即$K=\hat{X}\hat{X}^T,\Phi(\mathbf{x}_i)=(\hat{X}_{i,1},\cdots,\hat{X}_{i,n})^T$，或者使用特征分解也能得到相同的结果。
+
+此外，问题(\ref{equ:MKC-singalKernel})中的最后一个约束是类平衡约束，其目的是避免所有的训练样本点都被分配相同的类标签。这里$l > 0$是控制类平衡的常数。
+
+根据最优化问题(\ref{equ:MKC-singalKernel})，单核最大间隔聚类在最大化间隔时同时考虑类标记向量$\mathbf{y}$和分离超平面参数$(\mathbf{w},b)$。未知的二值向量$\mathbf{y}$使最优化问题(\ref{equ:MKC-singalKernel})变成整形规划，比SVM中的二次规划(QP)问题更难解决。然而，参考\upcite{zhao2008efficient}，我们能将单核最大间隔聚类问题(\ref{equ:MKC-singalKernel})的等价公式化描述：
+\begin{equation}
+\begin{split}
+\min_{\mathbf{w},b,\mathbf{\xi}}  \quad  & \frac{1}{2}\mathbf{w}^T\mathbf{w}+\frac{C}{n}\sum^n_{i=1}\xi_i \\
+s.t. \quad & \forall i\in\{1,\cdots,m\}:  \\
+& \left |\mathbf{w}^T\Phi(\mathbf{x}_i)+b \right | \ge 1-\xi_i,\xi_i \ge 0,  \\
+& -l \le \sum^n_{i=1} \left [\mathbf{w}^T\Phi(\mathbf{x}_i)+b \right ] \le l.  
+\label{equ:MKC-singalKernelRelax}
+\end{split}
+\end{equation}
+
+其中，标签向量$\mathbf{y}$由$y_i=\mathrm{sign}(\mathbf{w}^T\phi(\mathbf{x}_i)+b)$计算得到，最后一个约束是松弛类平衡约束。与问题(\ref{equ:MKC-singalKernel})相比，问题(\ref{equ:MKC-singalKernelRelax})更加容易处理。
+
+\subsection{多核最大间隔聚类}
+由于对某个特定的问题，核函数的适用性是未知的。因此这里利用多个核函数的非负线性组合构造基核，再将这个基核来代替单核最大间隔聚类中的核函数进行训练。详细的说，就是将输入空间中的每个数据样本$\mathbf{x}_i$通过$M$个映射$\Phi_k:\mathbf{x}\mapsto \Phi(\mathbf{x})\in \mathbb{R}^{D_k},k=1,\cdots,M$转换为$M$个特征向量$\Phi_1(\mathbf{x}_i),\cdots,\Phi_M(\mathbf{x}_i)$。这里$D_k$表示第$k$个特征空间的维度。对于每个特征映射来说，都有一个独立的权值向量$\mathbf{w}_k$。从而得到下面的优化问题，当$M=1$时与问题(\ref{equ:MKC-singalKernelRelax})等价。
+\begin{equation}
+\begin{split}
+\min_{\mathbf{\beta},\mathbf{w},b,\mathbf{\xi}} \quad & \frac{1}{2}\sum^M_{k=1}\beta_k\|\mathbf{w}_k\|^2+\frac{C}{n}\sum^n_{i=1}\xi_i \\
+s.t. \quad & \forall i \in \{1,\cdots,m\}:  \\
+& \left |\sum^M_{k=1}\beta_k\mathbf{w}_k^T\Phi_k(\mathbf{x}_i)+b\right | \ge 1-\xi_i,\xi_i \le 0,   \\
+& \forall k \in \{1,\cdots,M\}:\beta_k \ge 0,   \\
+& \sum^M_{k=1}\beta_k^p \le 1,   \\
+& -l \le \sum^n_{i=1}\left[\sum^M_{k=1}\beta_k\mathbf{w}_k^T\Phi_k(\mathbf{x}_i)+b\right] \le l 
+\label{equ:MKC-MultiKernel}
+\end{split}
+\end{equation}
+
+其中，权值$\beta_k$是用来规则化$M$个输出函数，权值的非负性约束是为了保证核函数之间的线性组合具有凸性，并且能得到基核是半正定的。此外，这里的$p$是一个正整数，这里设定$p=2$，也就是说，使用$l_2$范数对$\mathbf{\beta}=(\beta_1,\cdots,\beta_M)^T$进行规则化。
+
+从问题(\ref{{equ:MKC-MultiKernel}})中很容易看到，由于成对的参数$\beta_k$和$\mathbf{w_k}$使得目标函数、第一个约束以及最后一个约束都是非凸的。因此，这里需要对变量作一些调整：
+\begin{equation}
+\forall k\in\{1,\cdots,M\}:\mathbf{v}_k=\beta_k\mathbf{w}_k. 
+\end{equation}
+
+进过上面的转换，得到与问题(\ref{equ:MKC-MultiKernel})等价的多核MMC公式化描述：
+\begin{equation}
+\begin{split}
+\min_{\mathbf{\beta},\mathbf{v},b,\mathbf{\xi}} \quad & \frac{1}{2}\sum^M_{k=1}\frac{\|\mathbf{v}_k\|^2}{\beta_k}+\frac{C}{n}\sum^n_{i=1}\xi_i\\
+s.t. \quad & \forall i \in \{1,\cdots,m\}:   \\
+& \left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right | \ge 1-\xi_i,\xi_i \le 0,   \\
+& \forall k \in \{1,\cdots,M\}:\beta_k \ge 0,   \\
+& \sum^M_{k=1}\beta_k^p \le 1,   \\
+& -l \le \sum^n_{i=1}\left [ \sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right ] \le l  
+\label{equ:MKC-MKv}
+\end{split}
+\end{equation}
+
+其中，$\mathbf{v}=(\mathbf{v}_1,\cdots,\mathbf{v}_M)^T$。现在除了第一个约束条件外，其余的约束条件以及目标函数都具有凸性。
+
+\subsection{割平面算法}
+问题(\ref{equ:MKC-MKv})中有$m$个松弛变量$\xi_i$，对应于每个数据样本。接下来首先对问题(\ref{equ:MKC-MKv})重新公式化描述，减少松弛变量的数量。
+\begin{theorem} 
+\rm 多核MMC可以被等价的公式化描述为(证明见附录B)：
+\begin{align}
+\min_{\mathbf{\beta},\mathbf{v},b,\xi} \quad & \frac{1}{2}\sum^M_{k=1}\frac{\|\mathbf{v}_k\|^2}{\beta_k}+C\xi  \label{equ:MKC-gpm} \\
+\nonumber s.t.  \quad & \forall \mathbf{c}\in \{0,1\}^m:   \\
+& \frac{1}{m}\sum^m_{i=1}c_i\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right | \ge \frac{1}{m}\sum^m_{i=1}c_i-\xi,  \label{equ:MKC-gpmCon}\\
+\nonumber & \forall k \in \{1,\cdots,M\}:\beta_k \ge 0,   \\
+\nonumber & \sum^M_{k=1}\beta_k^p \le 1, \xi \ge 0,  \\
+\nonumber & -l \le \sum^m_{i=1}\left[\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right] \le l 
+\end{align}
+\label{theorem:MKC1}
+\end{theorem}
+
+在最优化问题(\ref{equ:MKC-gpm})中，松弛变量减少了$m-1$个，所有的非凸约束都共用同一个松弛变量$\xi$，这在很大程度上降低了多核MMC中非凸最优化问题的复杂度。另一方面，方程(\ref{equ:MKC-gpmCon})中约束条件的数量从$m$增加到$2^m$，这种指数级增长十分惊人。然而，割平面算法总能找到整个约束集合的一个小的子集，并且在此约束子集上求解得到的结果仍然能保证足够的精度，从而解决多核MMC问题。详细的说，首先初始化一个空的约束子集$\Omega$，计算在满足约束$\Omega$下问题(\ref{equ:MKC-gpm})的最优解；然后割平面算法会寻找(\ref{equ:MKC-gpmCon})中最违背的约束并添加到约束子集$\Omega$中。通过这种思想，割平面算法构造出一系列逐渐逼近原始多核MMC问题的近似值。如果约束集合(\ref{equ:MKC-gpmCon})中在$\epsilon$范围内没有约束是违背的，那么算法终止。算法1是完整的多核MMC割平面算法。
+\begin{table}[htbp]
+\centering
+ \begin{tabular}{lcl}
+  \toprule
+  {\CJKfontspec{STHeitiSC-Medium}算法1}\hspace{1em}多核最大间隔聚类的割平面算法 \\
+  \midrule
+ Input：$M$个特征映射$\Phi_1,\cdots,\Phi_M$，参数$C$，$l$和$\epsilon$，约束子集$\Omega= \phi$ \\
+ repeat \\
+ \hspace{1em}在当前约束子集$\Omega$下求解问题(\ref{equ:MKC-gpm})，得到$(\mathbf{v},b,\mathbf{\beta})$\\
+ \hspace{1em}选择最违背的约束$\mathbf{c}$，令$\Omega = \Omega \cup \{\mathbf{c}\}$\\
+ until \\
+ \hspace{1em}新选择的约束$\mathbf{c}$违背的程度小于$\epsilon$ \\
+  \bottomrule
+ \end{tabular}
+\end{table}
+
+在上述割平面算法中还存在两个问题：
+\begin{enumerate}[fullwidth,itemindent=24pt]
+   \item 在给予的约束子集$\Omega$下如何求解问题(\ref{equ:MKC-gpm}){\fangsong ？}
+   \item 如何在约束集合(\ref{equ:MKC-gpmCon})中找出最违背的约束{\fangsong ？}
+\end{enumerate}
+
+这些将在接下来的两个小节中讨论。
+
+\subsubsection{通过CCCP优化}
+在割平面算法的每一轮迭代中，需要在当前的约束子集$\Omega$下求解非凸最优化问题(\ref{equ:MKC-gpm})，从而得到最优的分离超平面。尽管问题(\ref{equ:MKC-gpm})中的目标函数是凸的，但约束并不是凸的，这使得问题很难求解。幸运的是，凹凸规划\upcite{cccp}(CCCP)能解决这类最优化问题。详细的说，问题(\ref{equ:MKC-gpm})中的目标函数是二次的，并且除了第一个约束外所有的约束都是线性的。而且，注意到尽管约束集合(\ref{equ:MKC-gpmCon})中的约束是非凸的，但能够写成两个凸函数的差值：
+\begin{equation}
+\begin{aligned}
+& \forall \mathbf{c} \in \Omega: \\
+& \left(\frac{1}{m}\sum^m_{i=1}c_i-\xi\right)-\frac{1}{m}\sum^m_{i=1}c_i\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | \le 0.
+\end{aligned}
+\end{equation}
+
+因此，可以通过下面的步骤利用CCCP求解最优化问题(\ref{equ:MKC-gpm})。首先初始化$(\mathbf{v}^{(0)},b^{(0)})$，通过将$\frac{1}{m}\sum^m_{i=1}c_i\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | $替换为其在$(\mathbf{v}^{(t)},b^{(t)})$处的一阶泰勒展开式，CCCP能够从$(\mathbf{v}^{(t)},b^{(t)})$计算得到$(\mathbf{v}^{(t+1)},b^{(t+1)})$。问题(\ref{equ:MKC-gpm})变成：
+\begin{equation}
+\begin{split}
+\min_{\mathbf{\beta},\mathbf{v},b,\mathbf{\xi}} \quad & \frac{1}{2}\sum^M_{k=1}\frac{\|\mathbf{v}_k\|^2}{\beta_k}+C\xi \\
+s.t. \quad & \forall \mathbf{c}\in \Omega: \\
+& \frac{1}{m}\sum^m_{i=1}c_i \le \xi + \frac{1}{m}\sum^m_{i=1}c_iz^{(t)}_i \left [\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right ]\\
+& \forall k \in \{1,\cdots,M\}:\beta_k \ge 0, \\
+& \sum^M_{k=1}\beta_k^2 \le 1, \xi \ge 0,\\
+& -l \le \sum^m_{i=1}\left[\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right] \le l
+\end{split}
+\end{equation}
+其中$z^{(t)}_i=\mathrm{sign}(\sum^M_{k=1}\mathbf{v}_k^{(t)T}\Phi_k(\mathbf{x}_i)+b^{(t)})$。引入额外的变量$t_k$作为$\frac{\|\mathbf{v}_k\|^2}{\beta_k}$的上界，我们能将上面的问题公式化描述为二阶锥规划(SOCP)问题：
+\begin{equation}
+\begin{split}
+\min_{\mathbf{\beta},\mathbf{v},b,\mathbf{\xi},\mathbf{t}} \quad & \frac{1}{2}\sum^M_{k=1}t_k+C\xi \\
+s.t. \quad & \forall \mathbf{c}\in \Omega: \\
+& \frac{1}{m}\sum^m_{i=1}c_i \le \xi + \frac{1}{m}\sum^m_{i=1}c_iz^{(t)}_i \left [\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right ]\\
+& \forall k \in \{1,\cdots,M\}: \\
+& \left\|\left[\begin{matrix} % or pmatrix or bmatrix or Bmatrix or ...
+      2\mathbf{v}_k \\
+      t_k-\beta_k \\
+   \end{matrix}\right]\right\| \le t_k+\beta_k,
+  \beta_k \ge 0, \\
+& \sum^M_{k=1}\beta_k^2 \le 1, \xi \ge 0,\\
+& -l \le \sum^m_{i=1}\left[\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b\right] \le l
+\label{equ:MKC-SOCP}
+\end{split}
+\end{equation}
+
+这里我们应用了一个定理，就是形如$\mathbf{s}^T\mathbf{s}\le xy,\ (x,y\in \mathbb{R}_+,\mathbf{s}\in \mathbb{R}^n)$的双曲线约束能被等价地转换为二阶锥约束\upcite{nesterov1994interior,tsang2006efficient}：
+\begin{equation}
+\left\|\left[\begin{matrix} % or pmatrix or bmatrix or Bmatrix or ...
+      2\mathbf{s} \\
+      x-y \\
+   \end{matrix}\right]\right\| \le x+y,
+\end{equation}
+
+由CCCP可知，SOCP问题求得的解$(\mathbf{v},b,\mathbf{\beta},\xi,\mathbf{t})$将作为$(\mathbf{v}^{(t+1)},b^{(t+1)},\mathbf{\beta},\xi,\mathbf{t})$，然后一直迭代直到收敛为止。算法2总结了在满足约束子集$\Omega$下求解问题(\ref{equ:MKC-SOCP})的方法，检查前后两次迭代之间目标函数的差值是否小于$\alpha\%$ (实验中通常将其设置为0.01)作为其终止条件。
+\begin{table}[htbp]
+\centering
+ \begin{tabular}{lcl}
+  \toprule
+   {\CJKfontspec{STHeitiSC-Medium}算法2}\hspace{1em}满足约束子集$\Omega$条件下通过CCCP求解问题(\ref{equ:MKC-gpm}) \\
+  \midrule
+ 初始化$(\mathbf{v}^{(0)},b^{(0)})$ \\
+ repeat \\
+ $\quad$求得$(\mathbf{v}^{(t+1)},b^{(t+1)},\mathbf{\beta},\xi,\mathbf{t})$作为SOCP问题(\ref{equ:MKC-SOCP})的解。\\
+ $\quad$令$\mathbf{v}=\mathbf{v}^{(t+1)},b=b^{(t+1)},t=t+1$。 \\
+ until \\
+ $\quad$满足停止准则。\\
+  \bottomrule
+ \end{tabular}
+\end{table}
+
+\newpage
+
+\subsubsection{最违背的约束}
+问题(\ref{equ:MKC-gpm})中最违背的约束很容易定义，其约束的可行性由相应的值$\xi$来度量。因此，最违背的约束条件也就是其相应值$\xi$最大。我们用向量$c$来表示约束集合(\ref{equ:MKC-gpmCon})中的每个约束，因此有下面的定理：
+\begin{theorem}
+\rm 问题(\ref{equ:MKC-gpm})中最违背的约束可以按下面方式计算：
+\begin{equation}
+c_i=
+\begin{cases}
+1 & \mathrm{if}\ \left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | < 1 \\
+0 & \mathrm{otherwise}
+\end{cases}
+\label{equ:MVC}
+\end{equation}
+\label{theorem:MKC2}
+\end{theorem}
+\hspace{24pt}{\heiti 证明}\hspace{1em}最违背的约束条件也就是其相应值$\xi$最大，为了满足问题(\ref{equ:MKC-gpm})中所有的约束，最优的$\xi$值计算如下：
+\begin{align}
+\begin{split}
+\xi^* & = \sum^m_{i=1}\max_{c_i\in\{0,1\}}\left\{\frac{1}{m}c_i - \frac{1}{m}c_i\left | \sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | \right \} \\
+& = \frac{1}{m}\sum^m_{i=1}\max_{c_i\in\{0,1\}}\left\{ c_i \left [ 1 - \left | \sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | \right ] \right \} 
+\end{split}
+\end{align}
+
+因此，最违背的约束$c$相应的$\xi^*$能够通过等式(\ref{equ:MVC})获得。
+
+割平面算法在迭代时，会选择在当前超平面参数下最违背的约束并将其添加到约束子集$\Omega$，直到在$\epsilon$范围内没有约束是违背的。此外，$\xi$与问题(\ref{equ:MKC-gpm})中的约束集合的可行性有着直接的对应关系，如果点$(\mathbf{v},b,\mathbf{\beta},\xi)$在精度$\epsilon$内满足所有的约束，也就是说：
+\begin{align}
+\begin{split}
+& \forall \mathbf{c} \in \{0,1\}^n: \\
+& \frac{1}{m}\sum^m_{i=1}c_i\left | \sum^M_{k=1}\mathbf{v}_k^T\Phi_k(\mathbf{x}_i)+b \right | \ge \frac{1}{m}\sum^m_{i=1}c_i - (\xi + \epsilon)
+\label{equ:feasi}
+\end{split}
+\end{align}
+
+那么点$(\mathbf{v},b,\mathbf{\beta},\xi+\epsilon)$也是可行的。此外，注意到在问题(\ref{equ:MKC-gpm})的目标函数中，松弛变量$\xi$度量了其聚类损失。因此，可以将所有的训练数据都满足不等式(\ref{equ:feasi})作为算法1的终止条件。
+
+\section{本章小结}
+MKC对MMC的局限性进行改进，引入多核学习的思想，使用多个核函数的非负线性组合得到的基核进行训练，并使用割平面算法构造一系列逐渐逼近原始多核MMC问题的序列，并且序列中的每个问题都可以通过CCCP进行求解。MKC最终能在训练数据上寻找到最大间隔超平面、最适合的类标记组合以及最优的核函数组合。

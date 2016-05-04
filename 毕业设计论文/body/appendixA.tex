@@ -1,0 +1,37 @@
+\chapter*{附录A}
+\addcontentsline{toc}{chapter}{附录A}
+{\CJKfontspec{STHeitiSC-Medium}证明}\hspace{1em}首先，问题(\ref{equ:MMC-CP})与下列问题等价：
+\begin{equation*}
+\begin{split}
+\min_{M.\delta} \quad & \delta \\
+s.t. \quad & \delta \le \max_{\mathbf{\alpha}}2\mathbf{\alpha}^T\mathbf{e}-\langle K \circ \mathbf{\alpha}\mathbf{\alpha}^T,M \rangle,0 \le \mathbf{\alpha} \le C, \mathcal{L}_1,\mathcal{L}_2,\mathcal{L}_4,M \succeq 0
+\end{split}
+\end{equation*}
+
+令$G(K)=M \circ K$，上述问题的拉格朗日函数为：
+\begin{equation*}
+\begin{split}
+L(\mathbf{\alpha},\mathbf{\mu},\mathbf{\nu}) = 2\mathbf{\alpha}^T\mathbf{e} - \mathbf{\alpha}^TG(K)\mathbf{\alpha} + 2\mathbf{\mu}\mathbf{\alpha} + 2\mathbf{\nu}(C-\mathbf{\alpha})
+\end{split}
+\end{equation*}
+
+拉格朗如函数$L$对$\mathbf{\alpha}$求偏导可得：
+\begin{equation*}
+\begin{split}
+\frac{\partial L}{\partial\mathbf{\alpha}}=0 \Longrightarrow \mathbf{\alpha} = G(K)^{-1}(\mathbf{e} + \mathbf{\mu} - \mathbf{\nu}) 
+\end{split}
+\end{equation*}
+
+将上式代入拉格朗日函数可得
+\begin{equation*}
+\begin{split}
+W(\mathbf{\mu},\mathbf{\nu}) & = \max_{\mathbf{\alpha}}\min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}L \\
+& = \min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}\max_{\mathbf{\alpha}} L \\
+& = \min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu})^TG(K)^{-1}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu}) + 2C\mathbf{v}^T\mathbf{e}
+\end{split}
+\end{equation*}
+
+那么要使得$W(\mathbf{\mu},\mathbf{\nu}) \le \delta$，必存在$\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0$，使得：
+$$(e+\mathbf{\mu}-\mathbf{\nu})^TG(K)^{-1}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu}) + 2C\mathbf{v}^T\mathbf{e} \le \delta$$
+
+由Schur补引理即可得到等价的问题(\ref{equ:MMC-CP})。

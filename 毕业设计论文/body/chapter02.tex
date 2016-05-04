@@ -1,0 +1,129 @@
+\chapter{支持向量机SVM}
+SVM是Vapnik\upcite{vladimir1995nature}于1995年提出的一种十分有效的算法，由于其卓绝的分类性能，很快成为机器学习的主流技术。该算法基于统计学习理论，提出间隔的概念，在提高分类准确率的同时，保证了所设计的分类器具有较好的泛化能力。并在此基础上引入核技巧有效避免“维数灾难”，成为非线性分类模型，更具实用性。本章将着重介绍SVM模型的相关知识。分别对SVM的主问题和对偶问题出发，分析其间隔最大化学习策略和核技巧的应用。
+\section{SVM模型}
+\subsection{硬间隔最大化分类器}
+支持向量机是定义在特征空间上间隔最大的分类器。考虑图\ref{fig:svm}所示的二维二类分类线性可分的情况：
+\begin{figure}[!htbp]
+\begin{pspicture}(20,6)
+\psline[linewidth=1pt](4,3)(9,1)
+\psline[linewidth=1pt](4.345,3.862)(9.345,1.862)
+\psline[linewidth=1pt](4.69,4.724)(9.69,2.724)
+\psline[linewidth=1pt]{<->}(9,1)(9.69,2.724)
+\rput(11.5,1.8){Margin$=\displaystyle\frac{2}{\sqrt{\mathbf{w}^T*\mathbf{w}}}$}
+\rput(4,4){$L$}
+\rput(3.7,3){$L_1$}
+\rput(4.3,4.8){$L_2$}
+\psdot[dotscale=1.7](4,2)
+\psdot[dotscale=2.7,dotstyle=o](5,2.6)
+\psdot[dotscale=1.7](5,2.6)
+\psdot[dotscale=1.7](5.8,1.7)
+\psdot[dotscale=2.7,dotstyle=o](6.6,1.96)
+\psdot[dotscale=1.7](6.6,1.96)
+\psdot[dotscale=1.7](7,0.7)
+\psdot[dotscale=1.7](8,0.99)
+\psdot[dotscale=1.7,dotstyle=o](6.6,4.96)
+\psdot[dotscale=1.7,dotstyle=o](5.6,4.96)
+\psdot[dotscale=2.7,dotstyle=o](6.4,4.04)
+\psdot[dotscale=1.7,dotstyle=o](6.4,4.04)
+\psdot[dotscale=1.7,dotstyle=o](7.6,4.06)
+\psdot[dotscale=1.7,dotstyle=o](8.3,4.01)
+\psdot[dotscale=2.7,dotstyle=o](8.8,3.08)
+\psdot[dotscale=1.7,dotstyle=o](8.8,3.08)
+\psdot[dotscale=1.7,dotstyle=o](9.6,3.46)
+\end{pspicture}
+\caption{二维二类分类问题}
+\label{fig:svm}
+\end{figure}
+
+图中实心点和空心点分别代表两类训练样本。$L$是将两类样本无错误分开的分类线，$L_1$、$L_2$ 分别为过各类样本中离分类线最近的点且平行于分类线的直线，定义直线 $L_1$和$L_2$之间的距离为两类样本间的分类间隔(Margin)。所谓最优分类线,就是要求分类 线不但能将两类无错误地分开,而且要使两类的分类间隔最大。前者是保证经验风险最小,后者是 使泛化性能最优,从而使结构风险最小。推广到高维空间,最优分类线就成为最优分类面。
+
+考虑两类分类问题，给定训练集$T=\{(\mathbf{x}_i,y_i)\}^m_{i=1}$，其中$\mathbf{x}_i\in X=\mathbf{\mathbb{R}}^n$，$y_i \in \{-1,+1\}$是样本对应的类别标记。则其相应的分类决策函数为$f(x)=\mathrm{sign}(\mathbf{w}^T\mathbf{x}+b)$，分离超平面为：
+\begin{align} % requires amsmath; align* for no eq. number
+   \mathbf{w}^T\mathbf{x}+b=0
+\end{align}
+
+其中，$\mathbf{w}$是权值向量，$b$是偏置。定义超平面$(\mathbf{w},b)$与关于训练数据集$T$的函数间隔：
+\begin{align} % requires amsmath; align* for no eq. number
+   \hat{\gamma}=\min_{1,\cdots,m}y_i(\mathbf{w}^T\mathbf{x}_i+b)
+\end{align}
+
+进一步对分离超平面的法向量$\mathbf{w}$进行规范化，也即令$\|\mathbf{w}\|=1$，这时便得到超平面$(\mathbf{w},b)$与关于训练数据集$T$的几何间隔：
+\begin{align} % requires amsmath; align* for no eq. number
+   \gamma=\frac{\hat{\gamma}}{\|\mathbf{w}\|}
+   \label{equ:margin} 
+\end{align}
+
+那么求解几何间隔最大的分离超平面问题就可以表示为下面的约束最优化问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+   \max_{\mathbf{w},b} \quad & \gamma \\
+   s.t. \quad & y_i \left( \frac{\mathbf{w}^T}{\|\mathbf{w}\|}\mathbf{x}_i+\frac{b}{\|\mathbf{w}\|} \right) \ge \gamma, \quad i=1,2,\cdots,m
+\end{split}
+\end{equation}
+
+考虑函数间隔和几何间隔之间的关系式(\ref{equ:margin})，便可得到线性可分支持向量机学习的最优化问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+   \max_{\mathbf{w},b} \quad & \frac{1}{2}\|\mathbf{w}\|^2 \\
+   s.t. \quad & y_i(\mathbf{w}^T\mathbf{x}_i+b)-1 \ge 0, \quad i=1,2,\cdots,m
+\end{split}
+\end{equation}
+
+\subsection{软间隔最大化分类器}
+线性可分问题的支持向量机学习方法，对线性不可分训练数据是不适用的，这就需要修改硬间隔最大化，使其称为软间隔最大化。假设训练数据集$T$中存在一些特异点(outlier)，使得训练集$T$是线性不可分的。对其中的每个样本点$(\mathbf{x}_i,y_i)$引进一个松弛变量$\xi_i \ge 0$，使得函数间隔加上松弛变量后大于等于1。同时对每个松弛变量$\xi_i$都要付出一定的代价，便得到线性不可分的线性支持向量机的学习问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+   \max_{\mathbf{w},b} \quad & \frac{1}{2}\|\mathbf{w}\|^2+C\sum^m_{i=1}\xi_i \\
+   s.t. \quad & y_i(\mathbf{w}^T\mathbf{x}_i+b) \ge 1-\xi_i, \quad i=1,2,\cdots,m \\
+   & \xi_i \ge 0, \quad  i=1,2,\cdots,m
+\end{split}
+\end{equation}
+
+其中，$C > 0$是惩罚参数，用来对误分类的样本进行惩罚。目标函数包含两层含义：几何间隔尽可能的大，同时使误分类的样本个数尽可能的小，$C$是调和二者的系数。
+
+\section{对偶问题}
+针对上面的软间隔SVM学习问题：
+\begin{equation*}
+\begin{split} % requires amsmath; align* for no eq. number
+   \max_{\mathbf{w},b} \quad & \frac{1}{2}\|\mathbf{w}\|^2+C\sum^m_{i=1}\xi_i \\
+   s.t. \quad & y_i(\mathbf{w}^T\mathbf{x}_i+b) \ge 1-\xi_i, \quad i=1,2,\cdots,m \\
+   & \xi_i \ge 0, \quad  i=1,2,\cdots,m
+\end{split}
+\end{equation*}
+
+常用的求解方法是引入拉格朗日函数：
+\begin{align} % requires amsmath; align* for no eq. number
+   L(\mathbf{w},b,\mathbf{\xi},\mathbf{\alpha},\mathbf{\mu})=\frac{1}{2}\|\mathbf{w}\|^2+C\sum^{m}_{i=1}\xi_i-\sum^{m}_{i=1}\alpha_i(y_i(\mathbf{w}^T\mathbf{x}_i+b)-1+\xi_i)-\sum^m_{i=1}\mu_i\xi_i \label{equ:Lagrange}
+\end{align}
+
+其中$\alpha$和$\mu$是拉格朗日乘子，且满足$\xi \ge 0,\mu \ge 0$。进一步求$L(\mathbf{w},b,\mathbf{\xi},\mathbf{\alpha},\mathbf{\mu})$对$\mathbf{w},b,\mathbf{\xi}$的极小，即：
+\begin{align} % requires amsmath; align* for no eq. number
+   \nabla_{\mathbf{w}}L(\mathbf{w},b,\mathbf{\xi},\mathbf{\alpha},\mathbf{\mu})=0 \Rightarrow \mathbf{w}=\sum^m_{i=1}\alpha_iy_i\mathbf{x}_i \label{equ:w} \\
+   \nabla_{b}L(\mathbf{w},b,\mathbf{\xi},\mathbf{\alpha},\mathbf{\mu})=0 \Rightarrow \sum^m_{i=1}\alpha_iy_i=0 \label{equ:b} \\
+   \nabla_{\xi_i}L(\mathbf{w},b,\mathbf{\xi},\mathbf{\alpha},\mathbf{\mu})=0 \Rightarrow C-\alpha_i-\mu_i=0 \label{equ:xi}
+\end{align}
+
+将式(\ref{equ:w})$\sim$(\ref{equ:xi})代入式(\ref{equ:Lagrange})中，则可将SVM主问题转化为下面的对偶问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+   \min_{\mathbf{\alpha}} \quad & \frac{1}{2}\sum^m_{i=1}\sum^m_{j=1}\alpha_i\alpha_jy_iy_j(\mathbf{x}_i^T\mathbf{x}_j)-\sum^m_{i=1}\alpha_i \\
+   s.t. \quad & \sum^m_{i=1}\alpha_iy_i=0 \\
+   & 0 \le \alpha_i \le C \quad  i=1,2,\cdots,m
+   \label{equ:dual}
+\end{split}
+\end{equation}
+
+SVM学习问题最终转化为其对偶问题(\ref{equ:dual})进行求解。常见的优化求解算法包括：选块算法\upcite{cristianini2000introduction}(Chunking Algorithm)、分解算法\upcite{cristianini2000introduction}(Decomposing Algorithm)和序列最小最优化方法\upcite{cristianini2000introduction}(SMO Algorithm)观察对偶问题(\ref{equ:dual})的目标函数可以发现$(\mathbf{x}_i^T\mathbf{x}_j)$是两个样本的内积，因此很容易联想到核方法，使用核函数$K(\mathbf{x}_i,\mathbf{x}_j)$来代替样本内积\upcite{李航2012统计学习方法}，便得到非线性SVM的最优化问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+   \min_{\mathbf{\alpha}} \quad & \frac{1}{2}\sum^m_{i=1}\sum^m_{j=1}\alpha_i\alpha_jy_iy_jK(\mathbf{x}_i,\mathbf{x}_j)-\sum^m_{i=1}\alpha_i \\
+   s.t. \quad & \mathbf{\alpha}^T\mathbf{y}=0 \\
+   & 0 \le \alpha_i \le C \quad  i=1,2,\cdots,m
+   \label{equ:dual-kernel}
+\end{split}
+\end{equation}
+
+核技巧的使用使得SVM能有效避免维数灾难问题。根据具体问题，灵活的选择核函数更有利于嵌入学习问题的先验知识。
+
+\section{本章小结}
+本章着重介绍了 SVM 模型的相关知识，分别从 SVM 主问题以及对偶问题出发，讨论了模型的构建、优化问题的推导、二者之间的关系等问题，并研究了间隔最大化学习策略和核技巧在 SVM 中的应用方法，为本文的研究工作提供了必要的知识背景。鉴于SVM在分类领域所取得的巨大的成功，那么，如果将间隔最大化学习策略和核技巧应用在无监督的聚类学习中，会取得怎样的效果呢{\fangsong ？}受这一灵感的启发，接下来一章开始探讨最大间隔聚类(MMC)算法的原理和模型推导过程。

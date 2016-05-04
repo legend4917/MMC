@@ -1,0 +1,56 @@
+% XeLaTeX can use any Mac OS X font. See the setromanfont command below.
+% Input to XeLaTeX is full Unicode, so Unicode characters can be typed directly into the source.
+
+% The next lines tell TeXShop to typeset with xelatex, and to open and save the source with Unicode encoding.
+
+%!TEX TS-program = xelatex
+%!TEX encoding = UTF-8 Unicode
+
+
+\documentclass[12pt]{report}
+
+
+% 宏包配置文件
+\input{setup/packages}
+
+
+% 格式文件
+\input{setup/format}
+
+\begin{document}
+\setcounter{secnumdepth}{3}
+\xiaosi
+
+\begin{titlepage}
+\input{body/titlepage}
+\end{titlepage}
+\pagenumbering{Roman}
+
+\input{body/abstract}
+
+\clearpage
+\addcontentsline{toc}{chapter}{\sihao\bfseries{目\hspace{1em}录}}
+\tableofcontents % 自动生成目录
+
+
+\input{body/chapter01}
+\input{body/chapter02}
+\input{body/chapter03}
+\input{body/chapter04}
+\input{body/experiment}
+\input{body/conclusion}
+\input{body/thanks}
+
+\clearpage
+\addcontentsline{toc}{chapter}{参考文献}
+\bibliographystyle{plain} 
+\bibliography{refference/reffer}
+
+
+\begin{appendix}
+   \input{body/appendixA}
+   \input{body/appendixB}
+\end{appendix}
+
+
+\end{document}  

@@ -1,0 +1,24 @@
+\chapter*{附录B}
+\addcontentsline{toc}{chapter}{附录B}
+{\CJKfontspec{STHeitiSC-Medium}证明}\hspace{1em}为了简单起见，用OP1表示最优化问题(\ref{equ:MKC-MKv})，用OP2表示最优化问题(\ref{equ:MKC-gpm})。证明理论(\ref{theorem:MKC1})成立等价于证明OP1和OP2有相同的最优目标值和等价的约束条件。详细的说，需要证明对于每个$(\mathbf{v},b,\mathbf{\beta})$，最优的$\xi^*$和$\{\xi^*_1,\cdots,\xi^*_m\}$之间满足$\xi^*=\frac{1}{m}\sum^m_{i=1}\xi^*_i$。这就意味着，当$(\mathbf{v},b,\mathbf{\beta})$固定，$(\mathbf{v},b,\mathbf{\beta},\xi^*)$和$(\mathbf{v},b,\mathbf{\beta},\xi^*_1,\cdots,\xi^*_m)$分别是OP1和OP2的最优解，最终得到相同的目标值。
+
+首先，注意到对于任意的$(\mathbf{v},b,\mathbf{\beta})$，OP1中的每个松弛变量$\xi_i$都能被单独的优化：
+$$
+\xi^*_i=\max\left\{0,1-\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(x_i)+b \right |\right\}  \eqno{(B.1)}
+$$
+
+对于OP2来说，最优的松弛变量$\xi$是：
+\begin{equation*}
+\xi^*=\max_{c\in\{0,1\}^m}\left\{\frac{1}{m}\sum^m_{i=1}c_i-\frac{1}{m}\sum^m_{i=1}c_i\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(x_i)+b \right |\right\}
+\end{equation*}
+
+因为在等式(B.1)中$c_i$是互不相关的，因此它们也能被单独的优化：
+\begin{equation*}
+\begin{aligned}
+\xi^* & =\sum^m_{i=1}\max_{c_i\in\{0,1\}^m}\left\{\frac{1}{m}c_i-\frac{1}{m}c_i\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(x_i)+b \right |\right\} \\
+& = \frac{1}{m}\sum^m_{i=1}\max\left\{0,1-\left |\sum^M_{k=1}\mathbf{v}_k^T\Phi_k(x_i)+b \right |\right\} \\
+& = \frac{1}{m}\sum^m_{i=1}\xi^*_i.
+\end{aligned}
+\end{equation*}
+
+因此，对于任意的$(\mathbf{v},b,\mathbf{\beta})$，给予最优的$\xi^*$和$\{\xi^*_1,\cdots,\xi^*_m\}$，OP1和OP2有相同的目标值。所以，这两个优化问题最优值是相同的。也就是说，我们能通过求解最优化问题(\ref{equ:MKC-gpm})来得到多核MMC的解。

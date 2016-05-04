@@ -1,0 +1,95 @@
+\chapter{最大间隔聚类MMC}
+由第二章的分析可知，SVM以间隔最大化为学习策略，通过对偶问题引入核技巧，实现高性能的非线性分类模型。因此在本章中，将间隔最大化学习策略和核技巧应用到无监督的聚类学习中，将聚类问题公式化的描述为凸整形规划问题，并对该问题进行松弛变化，得到最终MMC的半定规划模型。
+
+\section{MMC模型}
+MMC模型将有监督的软间隔SVM学习过程推广到无监督的学习过程，为无标记的训练数据添加标记，使得添加标记后的训练数据经过软间隔SVM学习后，能够得到最大的间隔。也就是说，给定训练数据$T=\{\mathbf{x}_1,\mathbf{x}_2,\cdots,\mathbf{x}_m\}$，其中$\mathbf{x}_i\in X = \mathbb{R}^m$，MMC将每个样本标记为$y_i\in \{-1,+1\}$，使得这两个正负类别之间的间隔是最大的。
+
+很显然，这样的样本类别标记有$2^m$中组合，因此这个问题在计算上十分困难。但若能将该问题转化为凸整形规划(convex integer program)问题，就有可能得到解析解。在此基础上，通过松弛整形约束将问题转化为半定规划(semidefinite program)问题，通过目前已有的半定规划求解工具包，就能很容易计算得到近似最大间隔的样本类别标记组合。
+
+在进行主要工作之前，需要注意几个问题：
+\begin{enumerate}[fullwidth,itemindent=24pt]
+  \item 需要在约束中添加类平衡约束。这样做不仅是为了防止所有的样本数据都被分配到相同的类标记中，更重要的是避免受到噪音的干扰，防止模型最终将一个或几个特异样本点分配到一个类中以满足最大间隔的要求。
+  \item 由于可能存在一些噪音数据具有相同的类别标记，为了提高MMC的性能，在这里使用软间隔最大化准则。
+  \item 尽管理论上将MMC模型推广到多类聚类是可能的，但为了简单起见，这里只关注与二类聚类情况。
+  \item 由于SVM中的参数$b$，也就是分类器的偏置，会导致非凸问题的出现，而当前还没找到有效的方法解决这个问题，因此只考虑其次分类器，也即令$b=0$，这样问题(\ref{equ:dual})中的约束$\mathbf{\alpha}^T\mathbf{y}=0$就可以去掉。尽管这样的限制看起来十分严重，但可以通过将训练数据进行中心化来减轻该限制的影响。
+  \end{enumerate}
+
+\section{模型推导}
+结合上述提到的处理方法，将软间隔SVM对偶问题(\ref{equ:dual-kernel})推广为MMC模型，便得到下面的最优化问题：
+\begin{equation}
+\begin{split} % requires amsmath; align* for no eq. number
+  \min_{\mathbf{y}\in\{-1,+1\}^m} \max_{\mathbf{\alpha}} \quad & 2\mathbf{\alpha}^T\mathbf{e} - \langle K \circ \mathbf{\alpha\alpha}^T,\mathbf{yy}^T \rangle \\
+  s.t. \quad & 0\le \mathbf{\alpha} \le C \\
+  & -l \le \mathbf{e}^T\mathbf{y} \le l 
+  \label{equ:MMC-origin}
+\end{split}
+\end{equation}
+
+其中，$K$表示由特征向量$\Phi=[\phi(\mathbf{x}_1),\cdots,\phi(\mathbf{x}_m)]$的内积得到$m\times m$的核矩阵，即$K=\Phi^T\Phi$，$k_{ij}=\phi(\mathbf{x}_i)^T\phi(\mathbf{x}_j)$，$\mathbf{e}$表示全1的向量。令$A \circ B$表示矩阵的分量乘法，$\langle A,B \rangle = \sum_{ij}a_{ij}b_{ij}$。约束$-l \le \mathbf{e}^T\mathbf{y} \le l $表示类平衡约束。
+由于最优化问题(\ref{equ:MMC-origin})的目标函数不是凸函数，因此无法使用有效的算法去解决。实际上，为了能有效的求解最优化问题(\ref{equ:MMC-origin})，需要下面两个步骤：
+
+(1)重新描述最优化问题(\ref{equ:MMC-origin})，记类标记核矩阵$M=\mathbf{yy}^T$。这样目标函数变成在关于$M$的线性函数上求最大值，因此目标函数是凸函数。这样虽然保证了目标函数具有凸性，但同时也产生了非凸约束$M=\mathbf{yy}^T$。因此必须寻找一种方法来约束$M$，从而保证$M=\mathbf{yy}^T$。
+
+(2)添加一系列的线性约束条件来约束$M$，从而保证$M=\mathbf{yy}^T$。注意到对于任意的$y\in \{-1,+1\}^m$，$M=\mathbf{yy}^T$一定有：
+\begin{equation*}
+m_{ij} \quad = \quad \left\{
+\begin{aligned}
+1 \quad & \mathrm{if}\ y_i = y_j \\
+-1 \quad & \mathrm{if}\ y_i \neq y_j
+\end{aligned}
+\right.
+\end{equation*}
+
+因此$M$具有传递性、自反性和对称性，并且$M$中有且仅有两种相等的类标记。考虑到这两个性质，下面通过添加一系列线性约束条件来满足这些要求：
+\begin{equation*}
+\begin{split}
+& \mathcal{L}_1:\quad m_{ii}=1;m_{ij}=m_{ji};m_ik\ge m_{ij}+m_{jk}-1;\quad \forall_{ijk} \\
+& \mathcal{L}_2:\quad m_{jk} \ge -m_{ij} - m_{ik} - 1; \quad \forall_{ijk} \\
+& \mathcal{L}_3:\quad \sum_im_{ij} \le m-2; \quad \forall_j \\
+\end{split}
+\end{equation*}
+
+这些关于$M$线性约束能够满足条件$M=\mathbf{yy}^T$。最后添加约束：
+\begin{equation*}
+\begin{split}
+\mathcal{L}_4:\quad -l \le \sum_im_{ij} \le l; \quad \forall_j \\
+\end{split}
+\end{equation*}
+
+来替换类平衡约束，同时这个约束也能满足$\mathcal{L}_3$。
+
+经过上述两个步骤，问题(\ref{equ:MMC-origin})被重新公式化描述为下面的凸整形规划问题：
+\begin{equation}
+\begin{split}
+\min_{M\in\{-1,+1\}^{m\times m}} \quad & \max_{\mathbf{\alpha}} 2\mathbf{\alpha}^Te-\langle K \circ \mathbf{\alpha}\mathbf{\alpha}^T,M \rangle \\ 
+s.t. \quad & 0 \le \mathbf{\alpha} \le C,\mathcal{L}_1,\mathcal{L}_2,\mathcal{L}_4
+\label{equ:MMC-CIP}
+\end{split}
+\end{equation}
+
+但是问题(\ref{equ:MMC-CIP})并不适用，因为凸整形规划问题的计算仍然十分困难。因此，需要进一步松弛整形约束$M$，从而得到连续参数空间上的凸优化问题：
+\begin{equation}
+\begin{split}
+\min_{M\in\{-1,+1\}^{m\times m}} \quad & \max_{\mathbf{\alpha}} 2\mathbf{\alpha}^Te-\langle K \circ \mathbf{\alpha}\mathbf{\alpha}^T,M \rangle \\ 
+s.t. \quad & 0 \le \mathbf{\alpha} \le C,\mathcal{L}_1,\mathcal{L}_2,\mathcal{L}_4,M\succeq 0
+\label{equ:MMC-CP}
+\end{split}
+\end{equation}
+
+再应用Schur补引理\upcite{lanckriet2004learning}，便能推导得到最终的半定规划问题(推导过程见附录A)：
+\begin{equation}
+\begin{split}
+\min_{M,\delta,\mathbf{\mu},\mathbf{\nu}} \quad & \delta \\
+s.t. \quad & \mathcal{L}_1,\mathcal{L}_2,\mathcal{L}_4,\mathbf{\mu} \ge 0,\mathbf{\nu} \ge 0, M \succeq 0 \\
+&    \left[\begin{matrix}
+      M \circ K & \mathbf{e} + \mathbf{\mu} - \mathbf{\nu} \\
+      (\mathbf{e} + \mathbf{\mu} - \mathbf{\nu})^T & \delta - 2C\mathbf{v}^T\mathbf{e} \\
+   \end{matrix}\right] \succeq 0
+   \label{equ:MMC-SDP}
+\end{split}
+\end{equation}
+
+求解半定规划问题(\ref{equ:MMC-SDP})得到最优的矩阵$M^*$，训练样本的类标记$\mathbf{y}=\sqrt{\mathit{\lambda}}\mathbf{v}$，其中$\mathit{\lambda},\mathbf{v}$分别是矩阵$M^*$最大的特征值和相应的特征向量。
+
+\section{本章小结}
+MMC将SVM中间隔最大化学习策略和核技巧推广到无监督的聚类学习中，其最终目标是为无标记的训练数据添加类别标记，使得在该组类别标记下的训练数据经过SVM的训练学习后，能够得到最大的间隔。但是在模型构造的过程中，需要去掉偏置参数$b$以避免非凸问题的出现，并且为了得到SDP问题松弛类标记核矩阵约束，这会导致损失部分参数空间。同时MMC与其它核方法一样，难以选择合适的核函数，这些都对MMC的聚类性能和适用性造成一定的影响。就MMC过程中的非凸整形优化问题而言，目前已经有一些不同的优化方法能够解决这个问题，除了这里提到的SDP，还有替代优化以及割平面算法。针对MMC的局限性和新方法的出现，接下来一章将会介绍使用割平面算法，并引入多核学习的多核聚类算法。

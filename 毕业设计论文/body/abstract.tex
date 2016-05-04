@@ -1,0 +1,20 @@
+\chapter*{摘\hspace{1em}要}
+\addcontentsline{toc}{chapter}{摘\hspace{1em}要}
+支持向量机SVM以间隔最大化为学习策略，并引入核技巧实现非线性分类，被公认为目前最好的分类模型。受到间隔最大化学习策略和核技巧在SVM中所取得的卓越性能的启发，本文考虑将间隔最大化学习策略和核技巧从有监督的学习推广到无监督的学习中。
+
+最大间隔聚类MMC的核心思想是首先使用核函数将数据映射到高维的核特征空间，然后寻找一组最优的类标记组合，使得SVM在新的特征空间上训练产生最大的间隔。在此基础上，MMC通过对约束条件进行松弛变换，得到半定规划(SDP)模型。由于最大间隔聚类仅仅依赖于由样本数据生成的核矩阵，因此很容易实现非线性聚类。但最大间隔聚类与其它的核方法一样，核函数的选择将直接决定最终模型性能的好坏，而当前对于特定的任务，选择合适的核函数还是一个尚未解决的问题。
+
+多核聚类MKC在此基础上利用有监督和半监督中多核学习的思想，提出对多个核函数进行非负线性组合并得到一个新的基核，再使用这个基核进行训练。MKC在此基础上构造出二阶锥规划(SOCP)模型，并使用割平面算法和凹凸规划对模型进行优化和求解，并同时得到最优的核函数组合、最适当的类标记组合以及最大间隔超平面。
+
+{\heiti 关键字：}聚类；最大间隔聚类；多核聚类；核技巧
+
+
+\chapter*{\textbf{Abstract}}
+\addcontentsline{toc}{chapter}{Abstract}
+The learning strategy of support vector machine is finding maximum margin hyperplane on training datas, and it achieves nonlinear classification by using kernel trick. SVM is considered the best classified model at present. Inspired by the outstanding performance of the maximum margin learning strategy and kernel trick in SVM, this paper considers to apply the maximum margin learning strategy and kernel trick from supervised learning to unsupervised  learning. 
+
+The key idea of maximum margin clustering (MMC) is mapping the sample datas to high-dimensional feature space at first, and then finds a set of optimal class labels so that SVM can find maximum margin by training in new feature space. MMC obtains semidefinite programming model by relaxing constraint condition. MMC is so easy to achieve nonlinear classification by using kernel trick. However, as in other kernel methods, choosing a suitable kernel function is imperative to the success of MMC. But for a current specific task, it is still a unresolved problem to find a suitable kernel function.
+
+Inspired by the works called multiple kernel learning in supervised and semi-supervised leaning, multiple kernel clustering (MKC) proposes a non-negative linear combination of many kernel functions to generate a new base kernel, and then uses this new base kernel to train. MKC constructs second-order cone programing model base on previous idea, using cutting plane algorithm and concave-convex procedure to optimize and solve the model. Finally, it can find the maximum margin hyperplane, the best cluster labeling, and the optimal kernel. 
+
+\textbf{Key words:} Clustering; Maximum margin clustering; Multiple kernel clustering; kernel trick
