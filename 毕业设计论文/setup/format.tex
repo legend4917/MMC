@@ -29,6 +29,10 @@
 \newcommand{\songti}{\CJKfamily{songti}} 
 \setCJKfamilyfont{fangsong}{STFangsong} 
 \newcommand{\fangsong}{\CJKfamily{fangsong}} 
+%\setCJKfamilyfont{menlo}{Menlo} 
+%\newcommand{\menlo}{\CJKfamily{menlo}} 
+\newfontfamily\menlo{Menlo}
+\newfontfamily\consolas{Consolas}
 
 \newcommand{\chuhao}{\fontsize{42pt}{46pt}\selectfont}
 \newcommand{\xiaochuhao}{\fontsize{36pt}{40pt}\selectfont}
@@ -77,10 +81,10 @@
 \titlecontents{chapter}[0pt]{\bfseries\sihao}{第\CJKnumber{\thecontentslabel}章\quad}{}
         {\hspace{0.3em}\titlerule*[4pt]{$\cdot$}\contentspage}
         
-\titlecontents{section}[0pt]{\songti\xiaosi}{\thecontentslabel}{}
+\titlecontents{section}[0pt]{\songti\xiaosi}{\thecontentslabel\hspace{0.5em}}{}
         {\hspace{0.3em}\titlerule*[4pt]{$\cdot$}\contentspage}
 
-\titlecontents{subsection}[0pt]{\songti\xiaosi}{\thecontentslabel}{}
+\titlecontents{subsection}[18pt]{\songti\xiaosi}{\thecontentslabel\hspace{0.5em}}{}
         {\hspace{0.3em}\titlerule*[4pt]{$\cdot$}\contentspage}
               
 % 定义章节标题格式
@@ -119,5 +123,9 @@
 
 \theoremstyle{plain} 
 \newtheorem{theorem}{\heiti{\hskip 2em 定理}}[chapter]
-\setlength{\theorempreskipamount}{6pt}
-\setlength{\theorempostskipamount}{-20pt}
+\newtheorem{definition}{\heiti{\hskip 2em 定义}}[chapter]
+
+
+\lstset{language=Matlab}
+\lstset{breaklines}
+\lstset{extendedchars=false}
