@@ -1,0 +1,133 @@
+\chapter*{算法源码}
+\addcontentsline{toc}{chapter}{算法源码}
+\noindent 本文中的MKC算法的核心Matlab代码如下：
+\begin{lstlisting}[basicstyle=\small\menlo]
+% 参数介绍
+% data为待输入的训练数据，矩阵类型，每行表示一条训练数据，每列表示训练数据的属性
+% label为训练数据的标签，列向量，元素取值为-1或1
+% C为松弛参数
+% d为多项式核函数的参数
+% sigma为高斯核函数的参数
+% epsilon为割平面过程的终止条件，这里默认为0.05
+% alpha为CCCP过程的终止条件，这里默认为0.01
+% best_v为在当前模型参数下，割平面过程中使得聚类精度最高的权值参数
+% best_b为在当前模型参数下，割平面过程中使得聚类精度最高的偏置参数
+% max_acc为在当前模型参数下的最高聚类精确度
+function [ best_v, best_b, max_acc ] = mkc( data, label, C, d, sigma, epsilon, alpha )
+if nargin == 5	% 设置默认值
+    epsilon = 0.05;
+    alpha = 0.01;
+end
+[m,n] = size(data);
+l = m/3;  	% 类平衡约束条件
+M = 3;     % 核函数个数,这里包括线性核函数、多项式核函数、高斯核函数
+linear_kernel = data * data';  	% 线性核函数生成核矩阵
+polynomial_kernel = (data * data'+1).^d; % 多项式核函数生成核矩阵
+guass_kernel = zeros(m,m);
+for i = 1:m
+    for j = 1:m
+	data_temp = data(i,:) - data(j,:);
+	guass_kernel(i,j) = exp(-data_temp*data_temp'/(2*sigma)); 	% 高斯核函数生成核矩阵
+    end
+end
+X = {};
+X{1} = getFeature(linear_kernel);	% 根据核矩阵获取其特征
+X{2} = getFeature(polynomial_kernel);	% 根据核矩阵获取其特征
+X{3} = getFeature(guass_kernel);	% 根据核矩阵获取其特征
+C_Omega = {};		% 保存所有最违背的约束，也即约束子集Omega
+max_acc = -inf;
+% 开始割平面过程，在每轮割平面中进行CCCP过程，并求解每轮CCCP中的最优化问题
+while 1	% 割平面迭代过程
+    v_k = ones(m,M);
+    b_k = 1;
+    res_temp = inf;
+    while 1		% CCCP迭代过程
+        cvx_begin sdp quiet		% 使用cvx优化包，一次CCCP求解过程
+            cvx_solver mosek		% 使用mosek求解器
+            variables betta(M) T(M) 
+            variables xi(1) b(1) 
+            variable v(m,M)
+            minimize(0.5*sum(T)+C*xi)	% 最小化目标函数
+            subject to 		% 所有约束条件
+                % 基础约束
+                for i=1:M
+                    norm([2*v(:,i);T(i)-betta(i)]) <= T(i)+betta(i);
+                    betta(i) >= 0;
+                end
+                sum(betta.^2) <= 1;
+                xi >= 0;
+                l_temp = zeros(1,m);
+                for i=1:M
+                    l_temp = l_temp + v(:,i)'*X{i}';
+                end
+                -l <= sum(l_temp+b) <= l; 
+                % 由最违背约束子集Omega生成的约束条件
+                if numel(C_Omega) > 0
+                    z_temp = zeros(1,m);
+                    for i=1:M
+                        z_temp = z_temp + v_k(:,i)'*X{i}';
+                    end
+                    z = sign(z_temp+b_k)';
+                    for i=1:numel(c_arr)
+                        1/m*sum(C_Omega{i}) <= xi+1/m*((C_Omega{i}.*z)'*(l_temp+b)');
+                    end
+                end
+        cvx_end		% 最优化问题求解完毕
+        res = cvx_optval;
+        % 判断是否满足CCCP迭代终止条件
+        if abs((res-res_temp)/res) <= alpha
+            break;
+        end
+        v_k = v;
+        b_k = b;
+        res_temp = res;
+    end	% CCCP迭代终止，进入割平面过程
+    temp = zeros(1,m);
+    for i=1:M
+        temp = temp + v(:,i)' * X{i}';
+    end
+    temp = (temp + b)';
+    c = zeros(m,1);     % 初始化最违背约束对应的c向量
+    xi_m = 0;
+    for i = 1:m     % 寻找最违背的约束
+        if abs(temp(i)) < 1
+            c(i) = 1;
+        else
+            c(i) = 0;
+        end
+        xi_m = xi_m + c(i) * (1 - abs(temp(i)));
+    end
+    xi_m = xi_m / m;
+    cluster = sign(temp);	% 聚类生成的样本类别标记
+    acc = sum(label==cluster)/m;	% 计算聚类准确率
+    if acc < 0.5		% 保证多数原则
+        acc = 1 - acc;
+    end
+    if max_acc < acc		% 判断本次迭代的聚类准确率是否最优
+        max_acc = acc;
+        best_v = v_k;
+        best_b = b_k;
+    end
+    if xi_m-xi <= epsilon	% 判断是否满足割平面过程的终止条件
+        break;
+    end
+    % 将最违背的约束加入约束子集，再进入CCCP过程
+    C_Omega{numel(C_Omega)+1} = c;
+end
+end
+
+% 特征提取函数参数介绍
+% K为由核函数生成的样本矩阵，也即核矩阵
+% X为对核矩阵进行特征分解得到的特征向量
+function [ X ] = getFeature( K )
+n = length(K);
+[p,x] = eig(K);
+for i=1:n
+    if x(i,i) < 0
+        x(i,i) = 0;
+    end
+    x(i,i) = x(i,i)^0.5;
+end
+X = p * x;
+end
+\end{lstlisting}

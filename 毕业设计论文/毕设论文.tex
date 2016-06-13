@@ -21,10 +21,10 @@
 \setcounter{secnumdepth}{3}
 \xiaosi
 
+\pagenumbering{Roman}
 \begin{titlepage}
 \input{body/titlepage}
 \end{titlepage}
-\pagenumbering{Roman}
 
 \input{body/abstract}
 
@@ -35,6 +35,8 @@
 
 \input{body/chapter01}
 \input{body/chapter02}
+\setlength{\theorempreskipamount}{6pt}
+\setlength{\theorempostskipamount}{-20pt}
 \input{body/chapter03}
 \input{body/chapter04}
 \input{body/experiment}
@@ -43,13 +45,18 @@
 
 \clearpage
 \addcontentsline{toc}{chapter}{参考文献}
-\bibliographystyle{plain} 
+\bibliographystyle{unsrt}
 \bibliography{refference/reffer}
 
 
+\includepdfset{pagecommand={\thispagestyle{plain}}}
 \begin{appendix}
-   \input{body/appendixA}
-   \input{body/appendixB}
+   \input{body/appendixC}
+   \clearpage
+   \addcontentsline{toc}{chapter}{英文文献}
+   \includepdf[pages=1-12]{translate/multiplekernelClustering.pdf}
+   \addcontentsline{toc}{chapter}{文献翻译}
+   \includepdf[pages=1-28]{translate/multiplekernelClustering中文版.pdf}
 \end{appendix}
 
 

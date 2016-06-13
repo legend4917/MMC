@@ -4,14 +4,14 @@
 \section{MMC模型}
 MMC模型将有监督的软间隔SVM学习过程推广到无监督的学习过程，为无标记的训练数据添加标记，使得添加标记后的训练数据经过软间隔SVM学习后，能够得到最大的间隔。也就是说，给定训练数据$T=\{\mathbf{x}_1,\mathbf{x}_2,\cdots,\mathbf{x}_m\}$，其中$\mathbf{x}_i\in X = \mathbb{R}^m$，MMC将每个样本标记为$y_i\in \{-1,+1\}$，使得这两个正负类别之间的间隔是最大的。
 
-很显然，这样的样本类别标记有$2^m$中组合，因此这个问题在计算上十分困难。但若能将该问题转化为凸整形规划(convex integer program)问题，就有可能得到解析解。在此基础上，通过松弛整形约束将问题转化为半定规划(semidefinite program)问题，通过目前已有的半定规划求解工具包，就能很容易计算得到近似最大间隔的样本类别标记组合。
+很显然，这样的样本类别标记有$2^m$种组合，因此这个问题在计算上十分困难。但若能将该问题转化为凸整形规划(convex integer program)问题，就有可能得到解析解。在此基础上，通过松弛整形约束将问题转化为半定规划(semidefinite program)问题，通过目前已有的半定规划求解工具包，就能很容易计算得到近似最大间隔的样本类别标记组合。
 
 在进行主要工作之前，需要注意几个问题：
 \begin{enumerate}[fullwidth,itemindent=24pt]
   \item 需要在约束中添加类平衡约束。这样做不仅是为了防止所有的样本数据都被分配到相同的类标记中，更重要的是避免受到噪音的干扰，防止模型最终将一个或几个特异样本点分配到一个类中以满足最大间隔的要求。
   \item 由于可能存在一些噪音数据具有相同的类别标记，为了提高MMC的性能，在这里使用软间隔最大化准则。
-  \item 尽管理论上将MMC模型推广到多类聚类是可能的，但为了简单起见，这里只关注与二类聚类情况。
-  \item 由于SVM中的参数$b$，也就是分类器的偏置，会导致非凸问题的出现，而当前还没找到有效的方法解决这个问题，因此只考虑其次分类器，也即令$b=0$，这样问题(\ref{equ:dual})中的约束$\mathbf{\alpha}^T\mathbf{y}=0$就可以去掉。尽管这样的限制看起来十分严重，但可以通过将训练数据进行中心化来减轻该限制的影响。
+  \item 尽管理论上将MMC模型推广到多类聚类是可能的，但为了简单起见，这里只关注于二类聚类情况。
+  \item 由于SVM中的参数$b$，也就是分类器的偏置，会导致非凸问题的出现，而当前还没找到有效的方法解决这个问题，因此只考虑其次分类器，也即令$b=0$，这样问题(\ref{equ:dual})中的约束$\mathbf{\alpha}^T\mathbf{y}=0$就可以去掉。尽管这样的限制看起来十分严重，但可以通过将训练数据进行中心化来降低该限制的影响。
   \end{enumerate}
 
 \section{模型推导}
@@ -30,7 +30,7 @@ MMC模型将有监督的软间隔SVM学习过程推广到无监督的学习过�
 
 (1)重新描述最优化问题(\ref{equ:MMC-origin})，记类标记核矩阵$M=\mathbf{yy}^T$。这样目标函数变成在关于$M$的线性函数上求最大值，因此目标函数是凸函数。这样虽然保证了目标函数具有凸性，但同时也产生了非凸约束$M=\mathbf{yy}^T$。因此必须寻找一种方法来约束$M$，从而保证$M=\mathbf{yy}^T$。
 
-(2)添加一系列的线性约束条件来约束$M$，从而保证$M=\mathbf{yy}^T$。注意到对于任意的$y\in \{-1,+1\}^m$，$M=\mathbf{yy}^T$一定有：
+(2)添加一系列的线性约束条件来约束$M$，从而保证$M=\mathbf{yy}^T$。注意到对于任意的$\mathbf{y}\in \{-1,+1\}^m$，$M=\mathbf{yy}^T$一定有：
 \begin{equation*}
 m_{ij} \quad = \quad \left\{
 \begin{aligned}
@@ -43,13 +43,13 @@ m_{ij} \quad = \quad \left\{
 因此$M$具有传递性、自反性和对称性，并且$M$中有且仅有两种相等的类标记。考虑到这两个性质，下面通过添加一系列线性约束条件来满足这些要求：
 \begin{equation*}
 \begin{split}
-& \mathcal{L}_1:\quad m_{ii}=1;m_{ij}=m_{ji};m_ik\ge m_{ij}+m_{jk}-1;\quad \forall_{ijk} \\
+& \mathcal{L}_1:\quad m_{ii}=1;m_{ij}=m_{ji};m_{ik}\ge m_{ij}+m_{jk}-1;\quad \forall_{ijk} \\
 & \mathcal{L}_2:\quad m_{jk} \ge -m_{ij} - m_{ik} - 1; \quad \forall_{ijk} \\
 & \mathcal{L}_3:\quad \sum_im_{ij} \le m-2; \quad \forall_j \\
 \end{split}
 \end{equation*}
 
-这些关于$M$线性约束能够满足条件$M=\mathbf{yy}^T$。最后添加约束：
+这些关于$M$的线性约束能够满足条件$M=\mathbf{yy}^T$。最后添加约束：
 \begin{equation*}
 \begin{split}
 \mathcal{L}_4:\quad -l \le \sum_im_{ij} \le l; \quad \forall_j \\
@@ -67,7 +67,7 @@ s.t. \quad & 0 \le \mathbf{\alpha} \le C,\mathcal{L}_1,\mathcal{L}_2,\mathcal{L}
 \end{split}
 \end{equation}
 
-但是问题(\ref{equ:MMC-CIP})并不适用，因为凸整形规划问题的计算仍然十分困难。因此，需要进一步松弛整形约束$M$，从而得到连续参数空间上的凸优化问题：
+但是问题(\ref{equ:MMC-CIP})并不适用，因为凸整形规划问题的计算仍然十分困难。因此，需要进一步松弛关于$M$的整形约束，从而得到连续参数空间上的凸优化问题：
 \begin{equation}
 \begin{split}
 \min_{M\in\{-1,+1\}^{m\times m}} \quad & \max_{\mathbf{\alpha}} 2\mathbf{\alpha}^Te-\langle K \circ \mathbf{\alpha}\mathbf{\alpha}^T,M \rangle \\ 
@@ -76,7 +76,41 @@ s.t. \quad & 0 \le \mathbf{\alpha} \le C,\mathcal{L}_1,\mathcal{L}_2,\mathcal{L}
 \end{split}
 \end{equation}
 
-再应用Schur补引理\upcite{lanckriet2004learning}，便能推导得到最终的半定规划问题(推导过程见附录A)：
+问题(\ref{equ:MMC-CP})与下列问题等价：
+\begin{equation}
+\begin{split}
+\min_{M.\delta} \quad & \delta \\
+s.t. \quad & \delta \le \max_{\mathbf{\alpha}}2\mathbf{\alpha}^T\mathbf{e}-\langle K \circ \mathbf{\alpha}\mathbf{\alpha}^T,M \rangle,0 \le \mathbf{\alpha} \le C, \mathcal{L}_1,\mathcal{L}_2,\mathcal{L}_4,M \succeq 0
+\end{split}
+\end{equation}
+
+令$G(K)=M \circ K$，上述问题的拉格朗日函数为：
+\begin{equation}
+\begin{split}
+L(\mathbf{\alpha},\mathbf{\mu},\mathbf{\nu}) = 2\mathbf{\alpha}^T\mathbf{e} - \mathbf{\alpha}^TG(K)\mathbf{\alpha} + 2\mathbf{\mu}\mathbf{\alpha} + 2\mathbf{\nu}(C-\mathbf{\alpha})
+\end{split}
+\end{equation}
+
+拉格朗日函数$L$对$\mathbf{\alpha}$求偏导可得：
+\begin{equation}
+\begin{split}
+\frac{\partial L}{\partial\mathbf{\alpha}}=0 \Longrightarrow \mathbf{\alpha} = G(K)^{-1}(\mathbf{e} + \mathbf{\mu} - \mathbf{\nu}) 
+\end{split}
+\end{equation}
+
+将上式代入拉格朗日函数可得
+\begin{equation}
+\begin{split}
+W(\mathbf{\mu},\mathbf{\nu}) & = \max_{\mathbf{\alpha}}\min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}L \\
+& = \min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}\max_{\mathbf{\alpha}} L \\
+& = \min_{\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu})^TG(K)^{-1}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu}) + 2C\mathbf{v}^T\mathbf{e}
+\end{split}
+\end{equation}
+
+那么要使得$W(\mathbf{\mu},\mathbf{\nu}) \le \delta$，必存在$\mathbf{\mu}\ge 0,\mathbf{\nu}\ge 0$，使得：
+$$(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu})^TG(K)^{-1}(\mathbf{e}+\mathbf{\mu}-\mathbf{\nu}) + 2C\mathbf{v}^T\mathbf{e} \le \delta$$
+
+由Schur补引理即可得到等价的问题(\ref{equ:MMC-CP})：
 \begin{equation}
 \begin{split}
 \min_{M,\delta,\mathbf{\mu},\mathbf{\nu}} \quad & \delta \\
